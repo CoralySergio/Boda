@@ -288,68 +288,78 @@
    * Enviar datos a Google Apps Script
    * usando un iframe oculto + formulario real.
    */
-  function submitToSheet(endpoint, payload) {
-    return new Promise((resolve, reject) => {
-      // Modo demo
-      if (endpoint.includes('YOUR_')) {
-        console.log('📋 Datos del formulario (modo demo):', payload);
-        setTimeout(resolve, 800);
-        return;
+  
+async function submitToSheet(endpoint, payload) {
+  const iframe = document.createElement('iframe');
+  iframe.name = 'boda-' + payload.submission_id;
+  iframe.style.display = 'none';
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = endpoint;
+  form.target = iframe.name;
+  form.style.display = 'none';
+
+  Object.entries(payload).forEach(([key, value]) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+  });
+
+  document.body.append(iframe, form);
+
+  function verificarGuardado() {
+    return new Promise((resolve) => {
+      const callback = '__bodaCheck_' +
+        crypto.randomUUID().replace(/-/g, '');
+      const script = document.createElement('script');
+      const url = new URL(endpoint);
+      let terminado = false;
+
+      url.searchParams.set('id', payload.submission_id);
+      url.searchParams.set('callback', callback);
+      url.searchParams.set('_', Date.now());
+
+      const timeout = setTimeout(() => finalizar(false), 4000);
+
+      function finalizar(guardado) {
+        if (terminado) return;
+        terminado = true;
+        clearTimeout(timeout);
+        script.remove();
+        delete window[callback];
+        resolve(guardado);
       }
 
-      try {
-        // Crear iframe oculto
-        const iframeName = 'rsvp-iframe-' + Date.now();
-        const iframe = document.createElement('iframe');
-        iframe.name = iframeName;
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
+      window[callback] = (respuesta) =>
+        finalizar(respuesta?.saved === true);
 
-        // Crear formulario real que apunte al iframe
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = endpoint;
-        form.target = iframeName;
-        form.style.display = 'none';
-
-        // Añadir cada campo como input hidden
-        for (const [key, value] of Object.entries(payload)) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = value;
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-
-        // Cuando el iframe cargue, limpiamos
-        iframe.addEventListener('load', () => {
-          setTimeout(() => {
-            document.body.removeChild(form);
-            document.body.removeChild(iframe);
-            resolve({ result: 'ok' });
-          }, 500);
-        });
-
-        // Timeout de seguridad (10 segundos)
-        setTimeout(() => {
-          try {
-            document.body.removeChild(form);
-            document.body.removeChild(iframe);
-          } catch (e) {
-            /* ya eliminados */
-          }
-          resolve({ result: 'ok' });
-        }, 10000);
-
-        // Enviar el formulario
-        form.submit();
-      } catch (err) {
-        reject(err);
-      }
+      script.onerror = () => finalizar(false);
+      script.src = url.toString();
+      document.head.appendChild(script);
     });
   }
+
+  try {
+    form.submit();
+
+    for (let intento = 0; intento < 8; intento++) {
+      if (await verificarGuardado()) {
+        return { result: 'ok' };
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+
+    throw new Error('No se pudo verificar el registro');
+  } finally {
+    form.remove();
+    iframe.remove();
+  }
+}
+
 
   function showStatus(el, message, type) {
     el.textContent = message;
