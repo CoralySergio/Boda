@@ -288,7 +288,7 @@
    * Enviar datos a Google Apps Script
    * usando un iframe oculto + formulario real.
    */
-  
+
 async function submitToSheet(endpoint, payload) {
   const iframe = document.createElement('iframe');
   iframe.name = 'boda-' + payload.submission_id;
@@ -525,6 +525,8 @@ async function submitToSheet(endpoint, payload) {
         : selectedGuests;
 
       const payload = {
+
+        submission_id: rsvpForm.dataset.pendingSubmissionId || (rsvpForm.dataset.pendingSubmissionId = crypto.randomUUID()),
         nombre: fd.get('nombre')?.trim() || 'Anónimo',
         asiste: fd.get('asiste') || 'Sin respuesta',
         acompanantes: String(companionCount),
@@ -578,6 +580,7 @@ async function submitToSheet(endpoint, payload) {
 
       try {
         await submitToSheet(ENDPOINTS.rsvp, payload);
+        delete rsvpForm.dataset.pendingSubmissionId;
 
         showStatus(
           rsvpStatus,
@@ -598,11 +601,8 @@ async function submitToSheet(endpoint, payload) {
       } catch (err) {
         console.error('Error al enviar:', err);
 
-        showStatus(
-          rsvpStatus,
-          'No se pudo enviar. Inténtalo de nuevo más tarde.',
-          'error'
-        );
+      showStatus(rsvpStatus, 'No hemos podido verificar tu respuesta. Consulta con los novios antes de volver a enviarla.', 'error');
+
       }
     });
   }
