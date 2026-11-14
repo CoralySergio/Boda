@@ -281,7 +281,7 @@
      ───────────────────────────────────── */
 
   const ENDPOINTS = {
-    rsvp: 'https://script.google.com/macros/s/AKfycbyg_D0_eOHtUEfdCDzevl3J_y775Wf1c5_Ql3H5aWTPDvOQuYfaw6d-OQBDFarxm4bL/exec',
+    rsvp: 'https://script.google.com/macros/s/AKfycbw3HWx3zSDaCfqLz3_InGiT6Ar8PsRPB28JgwznGACiLR9kcx6taMBe2azImAWU1w98',
   };
 
   /**
